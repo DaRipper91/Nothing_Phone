@@ -31,8 +31,52 @@ MAX_RETRIES = 10
 INITIAL_BACKOFF = 2.0  # seconds
 MAX_BACKOFF = 30.0  # seconds
 
+class Spinner:
+    def __init__(self, message="Waiting"):
+        self.spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        self.idx = 0
+        self.message = message
+        self.last_update = 0
+        self.update_interval = 0.1
+        self.running = False
+
+    def start(self):
+        if not self.running:
+            self.running = True
+            sys.stdout.write(f"\r{self.spinner_chars[self.idx]} {self.message}")
+            sys.stdout.flush()
+            self.last_update = time.time()
+
+    def update(self):
+        if not self.running:
+            return
+        current_time = time.time()
+        if current_time - self.last_update > self.update_interval:
+            self.idx = (self.idx + 1) % len(self.spinner_chars)
+            sys.stdout.write(f"\r{self.spinner_chars[self.idx]} {self.message}")
+            sys.stdout.flush()
+            self.last_update = current_time
+
+    def stop(self):
+        if self.running:
+            sys.stdout.write("\r" + " " * (len(self.message) + 2) + "\r")
+            sys.stdout.flush()
+            self.running = False
+
+# Global spinner instance
+spinner = None
+
 def log(msg):
+    global spinner
+    was_running = False
+    if spinner and spinner.running:
+        spinner.stop()
+        was_running = True
+
     logger.info(f"[PACMAN-INTERCEPTOR] {msg}")
+
+    if was_running:
+        spinner.start()
 
 def catch_fastboot(dev):
     log(f"Fastboot Device Detected: {hex(dev.idVendor)}:{hex(dev.idProduct)}")
@@ -70,6 +114,9 @@ def catch_fastboot(dev):
         usb.util.dispose_resources(dev)
 
         log("Device frozen. Invoking Flash Rescue (Fastboot Mode)...")
+        if spinner:
+            spinner.stop()
+
         # Ensure executable
         os.chmod(RESCUE_SCRIPT, 0o755)
         subprocess.call([RESCUE_SCRIPT, "fastboot"])
@@ -95,6 +142,8 @@ def catch_mtk(dev):
         ret = subprocess.call(cmd)
         if ret == 0:
             log("Payload successful. Invoking Flash Rescue (MTK Mode)...")
+            if spinner:
+                spinner.stop()
             os.chmod(RESCUE_SCRIPT, 0o755)
             subprocess.call([RESCUE_SCRIPT, "mtk"])
             sys.exit(0)
@@ -104,15 +153,22 @@ def catch_mtk(dev):
         log(f"MTK Launch Error: {e}")
 
 def main():
-    log("Waiting for Nothing Phone 2(a) (Pacman)...")
+    global spinner
+    log("Starting Pacman Interceptor...")
     log("  Target VIDs: 0x18d1 (Google), 0x2b4c (Nothing), 0x0e8d (MediaTek)")
     
+    spinner = Spinner("🔎 Waiting for device connection... (Press Ctrl+C to stop)")
+    spinner.start()
+
     # Track failed catch attempts to implement cooldown
     failed_devices = {}  # Maps device address to (failure_count, last_attempt_time)
     retry_counts = {}  # Maps device address to retry count
 
     while True:
         try:
+            if spinner:
+                spinner.update()
+
             # find_all=True is faster than creating new context repeatedly?
             # Actually usb.core.find returns an iterator.
             devs = usb.core.find(find_all=True)
@@ -189,8 +245,20 @@ def main():
             logger.debug(f"USB enumeration error (transient): {e}")
             continue
         except KeyboardInterrupt:
+            if spinner:
+                spinner.stop()
             log("Aborted.")
             break
+        except Exception:
+            if spinner:
+                spinner.stop()
+            raise
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        # Ensure cursor is cleared on crash
+        if spinner:
+            spinner.stop()
+        raise
