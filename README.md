@@ -24,7 +24,7 @@ The toolkit supports two recovery modes:
 
 ## ✨ Features
 
-- **Zero-Latency USB Interception**: Custom Python script monitors USB bus with sub-500ms response time
+- **Fast USB Interception**: Custom Python script monitors USB bus with sub-500ms response time
 - **Dual Mode Support**: Works with both Fastboot and MTK BootROM modes
 - **Automatic Recovery**: Detects device state and executes appropriate flash procedure
 - **Safety Features**: 
@@ -79,6 +79,12 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
+**Note**: The udev rules set the `uucp` group for device access. Ensure your user is in this group:
+```bash
+sudo usermod -aG uucp $USER
+# Log out and log back in for group changes to take effect
+```
+
 ### 3. Download Firmware
 1. Download the appropriate Nothing OS firmware from [spike0en/nothing_archive](https://github.com/spike0en/nothing_archive)
 2. Extract the firmware images
@@ -91,8 +97,7 @@ cd pacman_toolkit
 git clone https://github.com/bkerler/mtkclient
 cd mtkclient
 pip install -r requirements.txt
-python setup.py build
-python setup.py install
+pip install .
 ```
 
 ## 📖 Usage
@@ -150,7 +155,7 @@ The script will display: `Waiting for Nothing Phone 2(a) (Pacman)...`
 - Device bootloop window may be too short
 - Try holding the button combination longer
 - Ensure USB connection is stable (try different cable/port)
-- Check USB permissions with `lsusb` and verify your user is in the `uucp` group
+- Verify USB permissions and that your user is in the `uucp` group (see Installation step 2)
 
 ### Firmware Files Missing
 ```bash
