@@ -5,6 +5,11 @@ import subprocess
 import time
 import sys
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+logger = logging.getLogger(__name__)
 
 # Configuration
 TOOLKIT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -17,8 +22,17 @@ VID_GOOGLE = 0x18d1
 VID_NOTHING = 0x2b4c
 VID_MEDIATEK = 0x0e8d
 
+# Known Fastboot Product IDs
+KNOWN_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Common Fastboot PIDs
+NOTHING_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Nothing Phone Fastboot PIDs
+
+# Retry configuration
+MAX_RETRIES = 10
+INITIAL_BACKOFF = 2.0  # seconds
+MAX_BACKOFF = 30.0  # seconds
+
 def log(msg):
-    print(f"[PACMAN-INTERCEPTOR] {msg}")
+    logger.info(f"[PACMAN-INTERCEPTOR] {msg}")
 
 def catch_fastboot(dev):
     log(f"Fastboot Device Detected: {hex(dev.idVendor)}:{hex(dev.idProduct)}")
@@ -48,7 +62,8 @@ def catch_fastboot(dev):
             # Attempt to read response to confirm command receipt
             try:
                 ep_in.read(64, timeout=100)
-            except:
+            except usb.core.USBError as e:
+                logger.debug(f"USB read timeout or error (expected): {e}")
                 pass
 
         # Release resources so flash_rescue.sh (fastboot tool) can take over
@@ -91,6 +106,10 @@ def catch_mtk(dev):
 def main():
     log("Waiting for Nothing Phone 2(a) (Pacman)...")
     log("  Target VIDs: 0x18d1 (Google), 0x2b4c (Nothing), 0x0e8d (MediaTek)")
+    
+    # Track failed catch attempts to implement cooldown
+    failed_devices = {}  # Maps device address to (failure_count, last_attempt_time)
+    retry_counts = {}  # Maps device address to retry count
 
     while True:
         try:
@@ -99,15 +118,75 @@ def main():
             devs = usb.core.find(find_all=True)
 
             for dev in devs:
-                if dev.idVendor == VID_GOOGLE or dev.idVendor == VID_NOTHING:
-                    catch_fastboot(dev)
+                # Create unique device identifier
+                dev_addr = f"{dev.idVendor:04x}:{dev.idProduct:04x}:{dev.bus}:{dev.address}"
+                
+                # Check if we should apply cooldown for this device
+                if dev_addr in failed_devices:
+                    failure_count, last_attempt = failed_devices[dev_addr]
+                    current_time = time.time()
+                    
+                    # Calculate backoff time with exponential backoff
+                    backoff_time = min(INITIAL_BACKOFF * (2 ** failure_count), MAX_BACKOFF)
+                    
+                    if current_time - last_attempt < backoff_time:
+                        # Still in cooldown period, skip this device
+                        continue
+                    
+                    # Check if we've exceeded max retries
+                    if dev_addr in retry_counts and retry_counts[dev_addr] >= MAX_RETRIES:
+                        logger.error(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr}")
+                        logger.error("Unable to catch device. Possible causes:")
+                        logger.error("  - Device bootloop window too short")
+                        logger.error("  - USB connection unstable")
+                        logger.error("  - Incorrect device permissions")
+                        logger.error("Please reconnect the device and try again.")
+                        sys.exit(1)
+                
+                # Filter by VID and PID
+                if dev.idVendor == VID_GOOGLE:
+                    # Only catch if it's a known Fastboot PID
+                    if dev.idProduct in KNOWN_FASTBOOT_PIDS:
+                        try:
+                            catch_fastboot(dev)
+                        except Exception as e:
+                            # Track failure
+                            failed_devices[dev_addr] = (
+                                failed_devices.get(dev_addr, (0, 0))[0] + 1,
+                                time.time()
+                            )
+                            retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+                            logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
+                elif dev.idVendor == VID_NOTHING:
+                    # Only catch if it's a known Nothing Fastboot PID
+                    if dev.idProduct in NOTHING_FASTBOOT_PIDS:
+                        try:
+                            catch_fastboot(dev)
+                        except Exception as e:
+                            # Track failure
+                            failed_devices[dev_addr] = (
+                                failed_devices.get(dev_addr, (0, 0))[0] + 1,
+                                time.time()
+                            )
+                            retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+                            logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
                 elif dev.idVendor == VID_MEDIATEK:
-                    catch_mtk(dev)
+                    try:
+                        catch_mtk(dev)
+                    except Exception as e:
+                        # Track failure
+                        failed_devices[dev_addr] = (
+                            failed_devices.get(dev_addr, (0, 0))[0] + 1,
+                            time.time()
+                        )
+                        retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+                        logger.warning(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}")
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
             time.sleep(0.005)
 
-        except usb.core.USBError:
+        except usb.core.USBError as e:
+            logger.debug(f"USB enumeration error (transient): {e}")
             continue
         except KeyboardInterrupt:
             log("Aborted.")
