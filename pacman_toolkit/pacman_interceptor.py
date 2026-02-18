@@ -152,8 +152,39 @@ def catch_mtk(dev):
     except Exception as e:
         log(f"MTK Launch Error: {e}")
 
+def print_instructions():
+    print("\n" + "="*50)
+    print("      Nothing Phone 2(a) Recovery Toolkit")
+    print("="*50)
+    print("1. Force shutdown: Hold Vol+ and Power until screen is black")
+    print("2. Enter recovery: Immediately hold Vol+, Vol- and Power")
+    print("3. Connect USB cable while holding all three buttons")
+    print("="*50 + "\n")
+
+def check_prerequisites():
+    if not os.path.exists(RESCUE_SCRIPT):
+        logger.error(f"Rescue script not found: {RESCUE_SCRIPT}")
+        sys.exit(1)
+
+    firmware_dir = os.path.join(TOOLKIT_DIR, "firmware")
+    if not os.path.isdir(firmware_dir):
+        logger.error(f"Firmware directory not found: {firmware_dir}")
+        print("\nPlease create the firmware directory and place your images there:")
+        print(f"  mkdir -p {firmware_dir}")
+        sys.exit(1)
+
+    # Check for minimal files (boot.img is critical for both modes)
+    if not os.path.exists(os.path.join(firmware_dir, "boot.img")):
+        logger.error("boot.img not found in firmware directory!")
+        print("Please place official firmware images in pacman_toolkit/firmware/")
+        sys.exit(1)
+
 def main():
     global spinner
+
+    check_prerequisites()
+    print_instructions()
+
     log("Starting Pacman Interceptor...")
     log("  Target VIDs: 0x18d1 (Google), 0x2b4c (Nothing), 0x0e8d (MediaTek)")
     
