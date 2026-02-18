@@ -21,6 +21,7 @@ RESCUE_SCRIPT = os.path.join(TOOLKIT_DIR, "flash_rescue.sh")
 VID_GOOGLE = 0x18d1
 VID_NOTHING = 0x2b4c
 VID_MEDIATEK = 0x0e8d
+TARGET_VIDS = {VID_GOOGLE, VID_NOTHING, VID_MEDIATEK}
 
 # Known Fastboot Product IDs
 KNOWN_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Common Fastboot PIDs
@@ -174,6 +175,10 @@ def main():
             devs = usb.core.find(find_all=True)
 
             for dev in devs:
+                # Optimization: Skip irrelevant devices early to save CPU
+                if dev.idVendor not in TARGET_VIDS:
+                    continue
+
                 # Create unique device identifier
                 dev_addr = f"{dev.idVendor:04x}:{dev.idProduct:04x}:{dev.bus}:{dev.address}"
                 
