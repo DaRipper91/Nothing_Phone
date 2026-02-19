@@ -32,6 +32,18 @@ MAX_RETRIES = 10
 INITIAL_BACKOFF = 2.0  # seconds
 MAX_BACKOFF = 30.0  # seconds
 
+class Colors:
+    _is_tty = sys.stdout.isatty()
+    HEADER = '\033[95m' if _is_tty else ''
+    BLUE = '\033[94m' if _is_tty else ''
+    CYAN = '\033[96m' if _is_tty else ''
+    GREEN = '\033[92m' if _is_tty else ''
+    WARNING = '\033[93m' if _is_tty else ''
+    FAIL = '\033[91m' if _is_tty else ''
+    ENDC = '\033[0m' if _is_tty else ''
+    BOLD = '\033[1m' if _is_tty else ''
+    UNDERLINE = '\033[4m' if _is_tty else ''
+
 class Spinner:
     def __init__(self, message="Waiting"):
         self.spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -154,13 +166,13 @@ def catch_mtk(dev):
         log(f"MTK Launch Error: {e}")
 
 def print_instructions():
-    print("\n" + "="*50)
-    print("      Nothing Phone 2(a) Recovery Toolkit")
-    print("="*50)
-    print("1. Force shutdown: Hold Vol+ and Power until screen is black")
-    print("2. Enter recovery: Immediately hold Vol+, Vol- and Power")
-    print("3. Connect USB cable while holding all three buttons")
-    print("="*50 + "\n")
+    print("\n" + Colors.BOLD + "="*50 + Colors.ENDC)
+    print(f"      {Colors.HEADER}Nothing Phone 2(a) Recovery Toolkit{Colors.ENDC}")
+    print(Colors.BOLD + "="*50 + Colors.ENDC)
+    print(f"1. Force shutdown: Hold {Colors.CYAN}Vol+{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC} until screen is black")
+    print(f"2. Enter recovery: Immediately hold {Colors.CYAN}Vol+{Colors.ENDC}, {Colors.CYAN}Vol-{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC}")
+    print(f"3. {Colors.GREEN}Connect USB cable{Colors.ENDC} while holding all three buttons")
+    print(Colors.BOLD + "="*50 + Colors.ENDC + "\n")
 
 def check_prerequisites():
     if not os.path.exists(RESCUE_SCRIPT):
@@ -169,15 +181,15 @@ def check_prerequisites():
 
     firmware_dir = os.path.join(TOOLKIT_DIR, "firmware")
     if not os.path.isdir(firmware_dir):
-        logger.error(f"Firmware directory not found: {firmware_dir}")
-        print("\nPlease create the firmware directory and place your images there:")
-        print(f"  mkdir -p {firmware_dir}")
+        logger.error(f"{Colors.FAIL}Firmware directory not found: {firmware_dir}{Colors.ENDC}")
+        print(f"\n{Colors.WARNING}Please create the firmware directory and place your images there:{Colors.ENDC}")
+        print(f"  {Colors.GREEN}mkdir -p {firmware_dir}{Colors.ENDC}")
         sys.exit(1)
 
     # Check for minimal files (boot.img is critical for both modes)
     if not os.path.exists(os.path.join(firmware_dir, "boot.img")):
-        logger.error("boot.img not found in firmware directory!")
-        print("Please place official firmware images in pacman_toolkit/firmware/")
+        logger.error(f"{Colors.FAIL}boot.img not found in firmware directory!{Colors.ENDC}")
+        print(f"{Colors.WARNING}Please place official firmware images in pacman_toolkit/firmware/{Colors.ENDC}")
         sys.exit(1)
 
 def main():
@@ -189,7 +201,7 @@ def main():
     log("Starting Pacman Interceptor...")
     log("  Target VIDs: 0x18d1 (Google), 0x2b4c (Nothing), 0x0e8d (MediaTek)")
     
-    spinner = Spinner("🔎 Waiting for device connection... (Press Ctrl+C to stop)")
+    spinner = Spinner(f"{Colors.CYAN}🔎 Waiting for device connection... (Press Ctrl+C to stop){Colors.ENDC}")
     spinner.start()
 
     # Track failed catch attempts to implement cooldown
