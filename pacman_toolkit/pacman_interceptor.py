@@ -215,13 +215,9 @@ def main():
                 
                 # Check if we should apply cooldown for this device
                 if dev_addr in failed_devices:
-                    failure_count, last_attempt = failed_devices[dev_addr]
-                    current_time = time.time()
+                    next_retry_time, failure_count = failed_devices[dev_addr]
                     
-                    # Calculate backoff time with exponential backoff
-                    backoff_time = min(INITIAL_BACKOFF * (2 ** failure_count), MAX_BACKOFF)
-                    
-                    if current_time - last_attempt < backoff_time:
+                    if time.time() < next_retry_time:
                         # Still in cooldown period, skip this device
                         continue
                     
@@ -243,9 +239,12 @@ def main():
                             catch_fastboot(dev)
                         except Exception as e:
                             # Track failure
+                            current_count = failed_devices.get(dev_addr, (0, 0))[1]
+                            new_count = current_count + 1
+                            backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
                             failed_devices[dev_addr] = (
-                                failed_devices.get(dev_addr, (0, 0))[0] + 1,
-                                time.time()
+                                time.time() + backoff,
+                                new_count
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                             logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
@@ -256,9 +255,12 @@ def main():
                             catch_fastboot(dev)
                         except Exception as e:
                             # Track failure
+                            current_count = failed_devices.get(dev_addr, (0, 0))[1]
+                            new_count = current_count + 1
+                            backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
                             failed_devices[dev_addr] = (
-                                failed_devices.get(dev_addr, (0, 0))[0] + 1,
-                                time.time()
+                                time.time() + backoff,
+                                new_count
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                             logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
@@ -267,15 +269,19 @@ def main():
                         catch_mtk(dev)
                     except Exception as e:
                         # Track failure
+                        current_count = failed_devices.get(dev_addr, (0, 0))[1]
+                        new_count = current_count + 1
+                        backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
                         failed_devices[dev_addr] = (
-                            failed_devices.get(dev_addr, (0, 0))[0] + 1,
-                            time.time()
+                            time.time() + backoff,
+                            new_count
                         )
                         retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                         logger.warning(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}")
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
-            time.sleep(0.005)
+            # Increased to 50ms to reduce idle CPU usage while maintaining responsiveness
+            time.sleep(0.05)
 
         except usb.core.USBError as e:
             logger.debug(f"USB enumeration error (transient): {e}")
