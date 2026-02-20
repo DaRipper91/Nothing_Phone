@@ -31,6 +31,7 @@ NOTHING_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Nothing Phone Fastboot PIDs
 MAX_RETRIES = 10
 INITIAL_BACKOFF = 2.0  # seconds
 MAX_BACKOFF = 30.0  # seconds
+POLLING_INTERVAL = 0.1  # seconds (10Hz) - reduced from 200Hz to save CPU
 
 class Spinner:
     def __init__(self, message="Waiting"):
@@ -275,7 +276,7 @@ def main():
                         logger.warning(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}")
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
-            time.sleep(0.005)
+            time.sleep(POLLING_INTERVAL)
 
         except usb.core.USBError as e:
             logger.debug(f"USB enumeration error (transient): {e}")
