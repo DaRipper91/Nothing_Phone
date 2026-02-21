@@ -194,6 +194,15 @@ def check_prerequisites():
         print("Please place official firmware images in pacman_toolkit/firmware/")
         sys.exit(1)
 
+def handle_catch_error(dev_addr, exception, device_type, failed_devices, retry_counts):
+    """Handles and tracks failures during device catch attempts."""
+    failed_devices[dev_addr] = (
+        failed_devices.get(dev_addr, (0, 0))[0] + 1,
+        time.time()
+    )
+    retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+    logger.warning(f"Failed to catch {device_type} device (attempt {retry_counts[dev_addr]}): {exception}")
+
 def main():
     global spinner
 
@@ -225,7 +234,7 @@ def main():
                     continue
 
                 # Create unique device identifier
-                dev_addr = f"{dev.idVendor:04x}:{dev.idProduct:04x}:{dev.bus}:{dev.address}"
+                dev_addr = (dev.idVendor, dev.idProduct, dev.bus, dev.address)
                 
                 # Check if we should apply cooldown for this device
                 if dev_addr in failed_devices:
@@ -247,6 +256,12 @@ def main():
                         log("  - USB connection unstable", Colors.FAIL)
                         log("  - Incorrect device permissions", Colors.FAIL)
                         log("Please reconnect the device and try again.", Colors.FAIL)
+                        logger.error(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr[0]:04x}:{dev_addr[1]:04x}:{dev_addr[2]}:{dev_addr[3]}")
+                        logger.error("Unable to catch device. Possible causes:")
+                        logger.error("  - Device bootloop window too short")
+                        logger.error("  - USB connection unstable")
+                        logger.error("  - Incorrect device permissions")
+                        logger.error("Please reconnect the device and try again.")
                         sys.exit(1)
                 
                 # Filter by VID and PID
@@ -263,6 +278,7 @@ def main():
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                             log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_NOTHING:
                     # Only catch if it's a known Nothing Fastboot PID
                     if dev.idProduct in NOTHING_FASTBOOT_PIDS:
@@ -276,6 +292,7 @@ def main():
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                             log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_MEDIATEK:
                     try:
                         catch_mtk(dev)
@@ -287,6 +304,7 @@ def main():
                         )
                         retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                         log(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                        handle_catch_error(dev_addr, e, "MTK", failed_devices, retry_counts)
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
             time.sleep(0.005)
