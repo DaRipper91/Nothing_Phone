@@ -27,9 +27,11 @@ The toolkit supports two recovery modes:
 - **Fast USB Interception**: Custom Python script monitors USB bus with sub-500ms response time
 - **Dual Mode Support**: Works with both Fastboot and MTK BootROM modes
 - **Automatic Recovery**: Detects device state and executes appropriate flash procedure
+- **Enhanced Logging & Diagnostics**: Centralized error tracking with detailed, human-readable device identifiers for precise troubleshooting.
+- **Optimized Performance**: Efficient USB polling (10Hz) and lazy string formatting minimize CPU usage while maintaining responsiveness.
+- **Robust Device Identification**: Explicit filtering for Google, Nothing, and MediaTek vendor IDs prevents false positives.
 - **Safety Features**: 
   - Pre-flight firmware validation
-  - Operation summary and logging
   - Exponential backoff retry logic
   - Max retry protection
 - **ModemManager Bypass**: Custom udev rules prevent interference from system services
@@ -163,6 +165,9 @@ The script will display: `Waiting for Nothing Phone 2(a) (Pacman)...`
 ls -la pacman_toolkit/firmware/
 ```
 The flash script validates all required files before starting operations.
+
+### Detailed Logs
+For advanced troubleshooting, check the console output. The interceptor now provides detailed error tracking and device identification logs (VID:PID:BUS:ADDR) to help diagnose connection issues or driver conflicts.
 
 ## ⚠️ Important Warnings
 
