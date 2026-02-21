@@ -180,6 +180,15 @@ def check_prerequisites():
         print("Please place official firmware images in pacman_toolkit/firmware/")
         sys.exit(1)
 
+def handle_catch_error(dev_addr, exception, device_type, failed_devices, retry_counts):
+    """Handles and tracks failures during device catch attempts."""
+    failed_devices[dev_addr] = (
+        failed_devices.get(dev_addr, (0, 0))[0] + 1,
+        time.time()
+    )
+    retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+    logger.warning(f"Failed to catch {device_type} device (attempt {retry_counts[dev_addr]}): {exception}")
+
 def main():
     global spinner
 
@@ -242,37 +251,19 @@ def main():
                         try:
                             catch_fastboot(dev)
                         except Exception as e:
-                            # Track failure
-                            failed_devices[dev_addr] = (
-                                failed_devices.get(dev_addr, (0, 0))[0] + 1,
-                                time.time()
-                            )
-                            retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                            logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
+                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_NOTHING:
                     # Only catch if it's a known Nothing Fastboot PID
                     if dev.idProduct in NOTHING_FASTBOOT_PIDS:
                         try:
                             catch_fastboot(dev)
                         except Exception as e:
-                            # Track failure
-                            failed_devices[dev_addr] = (
-                                failed_devices.get(dev_addr, (0, 0))[0] + 1,
-                                time.time()
-                            )
-                            retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                            logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
+                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_MEDIATEK:
                     try:
                         catch_mtk(dev)
                     except Exception as e:
-                        # Track failure
-                        failed_devices[dev_addr] = (
-                            failed_devices.get(dev_addr, (0, 0))[0] + 1,
-                            time.time()
-                        )
-                        retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                        logger.warning(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}")
+                        handle_catch_error(dev_addr, e, "MTK", failed_devices, retry_counts)
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
             time.sleep(0.005)
