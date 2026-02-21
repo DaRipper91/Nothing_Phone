@@ -211,7 +211,7 @@ def main():
                     continue
 
                 # Create unique device identifier
-                dev_addr = f"{dev.idVendor:04x}:{dev.idProduct:04x}:{dev.bus}:{dev.address}"
+                dev_addr = (dev.idVendor, dev.idProduct, dev.bus, dev.address)
                 
                 # Check if we should apply cooldown for this device
                 if dev_addr in failed_devices:
@@ -227,7 +227,7 @@ def main():
                     
                     # Check if we've exceeded max retries
                     if dev_addr in retry_counts and retry_counts[dev_addr] >= MAX_RETRIES:
-                        logger.error(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr}")
+                        logger.error(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr[0]:04x}:{dev_addr[1]:04x}:{dev_addr[2]}:{dev_addr[3]}")
                         logger.error("Unable to catch device. Possible causes:")
                         logger.error("  - Device bootloop window too short")
                         logger.error("  - USB connection unstable")
