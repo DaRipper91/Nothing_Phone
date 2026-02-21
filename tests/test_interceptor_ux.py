@@ -14,6 +14,9 @@ sys.modules["usb"] = mock_usb
 sys.modules["usb.core"] = mock_usb_core
 sys.modules["usb.util"] = mock_usb_util
 
+# Mock stdout.isatty for Colors class initialization
+sys.stdout.isatty = MagicMock(return_value=True)
+
 # Mock subprocess
 import subprocess
 subprocess.call = MagicMock(return_value=0)
