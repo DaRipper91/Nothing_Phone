@@ -31,6 +31,18 @@ NOTHING_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Nothing Phone Fastboot PIDs
 MAX_RETRIES = 10
 INITIAL_BACKOFF = 2.0  # seconds
 MAX_BACKOFF = 30.0  # seconds
+POLLING_INTERVAL = 0.1  # seconds (10Hz) - reduced from 200Hz to save CPU
+
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 class Colors:
     _is_tty = sys.stdout.isatty()
@@ -79,20 +91,23 @@ class Spinner:
 # Global spinner instance
 spinner = None
 
-def log(msg):
+def log(msg, color=None):
     global spinner
     was_running = False
     if spinner and spinner.running:
         spinner.stop()
         was_running = True
 
-    logger.info(f"[PACMAN-INTERCEPTOR] {msg}")
+    if color:
+        logger.info(f"{color}[PACMAN-INTERCEPTOR] {msg}{Colors.ENDC}")
+    else:
+        logger.info(f"[PACMAN-INTERCEPTOR] {msg}")
 
     if was_running:
         spinner.start()
 
 def catch_fastboot(dev):
-    log(f"Fastboot Device Detected: {hex(dev.idVendor)}:{hex(dev.idProduct)}")
+    log(f"Fastboot Device Detected: {hex(dev.idVendor)}:{hex(dev.idProduct)}", Colors.GREEN)
     try:
         # Detach kernel driver to ensure we can claim it
         if dev.is_kernel_driver_active(0):
@@ -126,7 +141,7 @@ def catch_fastboot(dev):
         # Release resources so flash_rescue.sh (fastboot tool) can take over
         usb.util.dispose_resources(dev)
 
-        log("Device frozen. Invoking Flash Rescue (Fastboot Mode)...")
+        log("Device frozen. Invoking Flash Rescue (Fastboot Mode)...", Colors.GREEN)
         if spinner:
             spinner.stop()
 
@@ -136,11 +151,11 @@ def catch_fastboot(dev):
         sys.exit(0)
 
     except Exception as e:
-        log(f"Fastboot Catch Error: {e}")
+        log(f"Fastboot Catch Error: {e}", Colors.FAIL)
 
 def catch_mtk(dev):
-    log(f"MediaTek Device Detected: {hex(dev.idVendor)}:{hex(dev.idProduct)}")
-    log("Attempting to trigger mtkclient payload...")
+    log(f"MediaTek Device Detected: {hex(dev.idVendor)}:{hex(dev.idProduct)}", Colors.GREEN)
+    log("Attempting to trigger mtkclient payload...", Colors.CYAN)
 
     # We construct the command to run mtkclient
     # Prefer local mtkclient if present
@@ -154,16 +169,16 @@ def catch_mtk(dev):
         # We use call to wait for it. mtk payload should handle the handshake.
         ret = subprocess.call(cmd)
         if ret == 0:
-            log("Payload successful. Invoking Flash Rescue (MTK Mode)...")
+            log("Payload successful. Invoking Flash Rescue (MTK Mode)...", Colors.GREEN)
             if spinner:
                 spinner.stop()
             os.chmod(RESCUE_SCRIPT, 0o755)
             subprocess.call([RESCUE_SCRIPT, "mtk"])
             sys.exit(0)
         else:
-            log("mtkclient payload failed.")
+            log("mtkclient payload failed.", Colors.FAIL)
     except Exception as e:
-        log(f"MTK Launch Error: {e}")
+        log(f"MTK Launch Error: {e}", Colors.FAIL)
 
 def print_instructions():
     print("\n" + Colors.BOLD + "="*50 + Colors.ENDC)
@@ -173,6 +188,13 @@ def print_instructions():
     print(f"2. Enter recovery: Immediately hold {Colors.CYAN}Vol+{Colors.ENDC}, {Colors.CYAN}Vol-{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC}")
     print(f"3. {Colors.GREEN}Connect USB cable{Colors.ENDC} while holding all three buttons")
     print(Colors.BOLD + "="*50 + Colors.ENDC + "\n")
+    print("\n" + Colors.HEADER + "="*50)
+    print("      Nothing Phone 2(a) Recovery Toolkit")
+    print("="*50 + Colors.ENDC)
+    print(f"1. Force shutdown: Hold {Colors.CYAN}Vol+{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC} until screen is black")
+    print(f"2. Enter recovery: Immediately hold {Colors.CYAN}Vol+{Colors.ENDC}, {Colors.CYAN}Vol-{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC}")
+    print("3. Connect USB cable while holding all three buttons")
+    print(Colors.HEADER + "="*50 + Colors.ENDC + "\n")
 
 def check_prerequisites():
     if not os.path.exists(RESCUE_SCRIPT):
@@ -192,16 +214,26 @@ def check_prerequisites():
         print(f"{Colors.WARNING}Please place official firmware images in pacman_toolkit/firmware/{Colors.ENDC}")
         sys.exit(1)
 
+def handle_catch_error(dev_addr, exception, device_type, failed_devices, retry_counts):
+    """Handles and tracks failures during device catch attempts."""
+    failed_devices[dev_addr] = (
+        failed_devices.get(dev_addr, (0, 0))[0] + 1,
+        time.time()
+    )
+    retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+    logger.warning(f"Failed to catch {device_type} device (attempt {retry_counts[dev_addr]}): {exception}")
+
 def main():
     global spinner
 
     check_prerequisites()
     print_instructions()
 
-    log("Starting Pacman Interceptor...")
+    log("Starting Pacman Interceptor...", Colors.BOLD)
     log("  Target VIDs: 0x18d1 (Google), 0x2b4c (Nothing), 0x0e8d (MediaTek)")
     
     spinner = Spinner(f"{Colors.CYAN}🔎 Waiting for device connection... (Press Ctrl+C to stop){Colors.ENDC}")
+    spinner = Spinner(f"{Colors.BLUE}🔎 Waiting for device connection... (Press Ctrl+C to stop){Colors.ENDC}")
     spinner.start()
 
     # Track failed catch attempts to implement cooldown
@@ -223,7 +255,7 @@ def main():
                     continue
 
                 # Create unique device identifier
-                dev_addr = f"{dev.idVendor:04x}:{dev.idProduct:04x}:{dev.bus}:{dev.address}"
+                dev_addr = (dev.idVendor, dev.idProduct, dev.bus, dev.address)
                 
                 # Check if we should apply cooldown for this device
                 if dev_addr in failed_devices:
@@ -239,7 +271,13 @@ def main():
                     
                     # Check if we've exceeded max retries
                     if dev_addr in retry_counts and retry_counts[dev_addr] >= MAX_RETRIES:
-                        logger.error(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr}")
+                        log(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr}", Colors.FAIL)
+                        log("Unable to catch device. Possible causes:", Colors.FAIL)
+                        log("  - Device bootloop window too short", Colors.FAIL)
+                        log("  - USB connection unstable", Colors.FAIL)
+                        log("  - Incorrect device permissions", Colors.FAIL)
+                        log("Please reconnect the device and try again.", Colors.FAIL)
+                        logger.error(f"Max retries ({MAX_RETRIES}) exceeded for device {dev_addr[0]:04x}:{dev_addr[1]:04x}:{dev_addr[2]}:{dev_addr[3]}")
                         logger.error("Unable to catch device. Possible causes:")
                         logger.error("  - Device bootloop window too short")
                         logger.error("  - USB connection unstable")
@@ -260,7 +298,8 @@ def main():
                                 time.time()
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                            logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
+                            log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_NOTHING:
                     # Only catch if it's a known Nothing Fastboot PID
                     if dev.idProduct in NOTHING_FASTBOOT_PIDS:
@@ -273,7 +312,8 @@ def main():
                                 time.time()
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                            logger.warning(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}")
+                            log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_MEDIATEK:
                     try:
                         catch_mtk(dev)
@@ -284,10 +324,11 @@ def main():
                             time.time()
                         )
                         retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                        logger.warning(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}")
+                        log(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                        handle_catch_error(dev_addr, e, "MTK", failed_devices, retry_counts)
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
-            time.sleep(0.005)
+            time.sleep(POLLING_INTERVAL)
 
         except usb.core.USBError as e:
             logger.debug(f"USB enumeration error (transient): {e}")
