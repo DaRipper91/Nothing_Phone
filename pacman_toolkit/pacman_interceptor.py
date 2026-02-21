@@ -203,15 +203,6 @@ def check_prerequisites():
         print(f"{Colors.WARNING}Please place official firmware images in pacman_toolkit/firmware/{Colors.ENDC}")
         sys.exit(1)
 
-def handle_catch_error(dev_addr, exception, device_type, failed_devices, retry_counts):
-    """Handles and tracks failures during device catch attempts."""
-    failed_devices[dev_addr] = (
-        failed_devices.get(dev_addr, (0, 0))[0] + 1,
-        time.time()
-    )
-    retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-    logger.warning(f"Failed to catch {device_type} device (attempt {retry_counts[dev_addr]}): {exception}")
-
 def main():
     global spinner
 
@@ -287,7 +278,6 @@ def main():
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                             log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
-                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_NOTHING:
                     # Only catch if it's a known Nothing Fastboot PID
                     if dev.idProduct in NOTHING_FASTBOOT_PIDS:
@@ -304,7 +294,6 @@ def main():
                             )
                             retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                             log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
-                            handle_catch_error(dev_addr, e, "fastboot", failed_devices, retry_counts)
                 elif dev.idVendor == VID_MEDIATEK:
                     try:
                         catch_mtk(dev)
@@ -319,11 +308,8 @@ def main():
                         )
                         retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
                         log(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
-                        handle_catch_error(dev_addr, e, "MTK", failed_devices, retry_counts)
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
-            # Increased to 50ms to reduce idle CPU usage while maintaining responsiveness
-            time.sleep(0.05)
             time.sleep(POLLING_INTERVAL)
 
         except usb.core.USBError as e:
