@@ -4,12 +4,6 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Mock usb package and submodules BEFORE importing pacman_interceptor
-import sys
-import unittest
-from unittest.mock import MagicMock, patch
-import os
-
 # Mock usb and its submodules BEFORE importing pacman_interceptor
 mock_usb = MagicMock()
 mock_usb_core = MagicMock()
@@ -20,20 +14,6 @@ sys.modules["usb"] = mock_usb
 sys.modules["usb.core"] = mock_usb_core
 sys.modules["usb.util"] = mock_usb_util
 
-# Mock stdout.isatty for Colors class initialization
-sys.stdout.isatty = MagicMock(return_value=True)
-
-# Add pacman_toolkit to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-try:
-    import pacman_toolkit.pacman_interceptor as interceptor
-except ImportError as e:
-    print(f"ImportError: {e}")
-    sys.exit(1)
-
-class TestCatchFastboot(unittest.TestCase):
-    def setUp(self):
 # IMPORTANT: Link the submodules to the parent package mock
 # This ensures that 'import usb.core' makes 'usb.core' refer to our configured mock
 mock_usb.core = mock_usb_core
@@ -54,7 +34,11 @@ sys.stdout.isatty = MagicMock(return_value=True)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Now import the module under test
-from pacman_toolkit import pacman_interceptor
+try:
+    from pacman_toolkit import pacman_interceptor as interceptor
+except ImportError as e:
+    print(f"ImportError: {e}")
+    sys.exit(1)
 
 class TestCatchFastboot(unittest.TestCase):
     def setUp(self):
@@ -149,6 +133,43 @@ class TestCatchFastboot(unittest.TestCase):
 
             # Verify error logged
             mock_log.assert_called_with("Fastboot Catch Error: Generic Error", interceptor.Colors.FAIL)
+
+    @patch('pacman_toolkit.pacman_interceptor.subprocess.call')
+    @patch('pacman_toolkit.pacman_interceptor.sys.exit')
+    @patch('pacman_toolkit.pacman_interceptor.usb.util.claim_interface')
+    @patch('pacman_toolkit.pacman_interceptor.usb.util.find_descriptor')
+    @patch('pacman_toolkit.pacman_interceptor.log')
+    def test_catch_fastboot_missing_endpoints(self, mock_log, mock_find, mock_claim, mock_exit, mock_call):
+        """
+        Test that if endpoints are missing, the code logs an error and does NOT call the rescue script.
+        """
+        # Setup: find_descriptor returns None (missing endpoints)
+        mock_find.return_value = None
+
+        # Execute
+        interceptor.catch_fastboot(self.mock_dev)
+
+        # Verify descriptors were sought but not found (returned None)
+        # find_descriptor is called twice
+        self.assertEqual(mock_find.call_count, 2)
+
+        # Verify script executed (SHOULD BE ZERO)
+        mock_call.assert_not_called()
+
+        # Verify exit called (SHOULD BE ZERO)
+        mock_exit.assert_not_called()
+
+        # Verify error logged
+        # Expected: log(f"Fastboot Catch Error: {e}", Colors.FAIL)
+        # The exception raised is Exception("Required endpoints (IN/OUT) not found")
+        error_found = False
+        for call in mock_log.call_args_list:
+            args, _ = call
+            if args and "Fastboot Catch Error" in str(args[0]) and "Required endpoints" in str(args[0]):
+                error_found = True
+                break
+
+        self.assertTrue(error_found, "Expected error message not found in logs")
 
 class TestCatchMtk(unittest.TestCase):
     def setUp(self):
@@ -250,106 +271,6 @@ class TestCheckPrerequisites(unittest.TestCase):
 
         # Verify
         mock_exit.assert_not_called()
-        # Setup find_descriptor to return mock endpoints
-        self.mock_ep_out = MagicMock()
-        self.mock_ep_in = MagicMock()
-
-        # Configure usb.util.find_descriptor side effect
-        # First call is for OUT endpoint, second for IN endpoint
-        mock_usb_util.find_descriptor.side_effect = [self.mock_ep_out, self.mock_ep_in]
-
-    def tearDown(self):
-        self.patcher_isatty.stop()
-        self.patcher_chmod.stop()
-        self.patcher_exit.stop()
-        # Reset side_effect
-        mock_usb_util.find_descriptor.side_effect = None
-
-    def test_catch_fastboot_success(self):
-        """Test successful fastboot catch flow."""
-        # Setup kernel driver active
-        self.mock_dev.is_kernel_driver_active.return_value = True
-
-        # Call the function
-        pacman_interceptor.catch_fastboot(self.mock_dev)
-
-        # Verify kernel driver detached
-        self.mock_dev.is_kernel_driver_active.assert_called_with(0)
-        self.mock_dev.detach_kernel_driver.assert_called_with(0)
-
-        # Verify interface claimed
-        mock_usb_util.claim_interface.assert_called_with(self.mock_dev, 0)
-
-        # Verify descriptors found
-        self.assertEqual(mock_usb_util.find_descriptor.call_count, 2)
-
-        # Verify command sent
-        self.mock_ep_out.write.assert_called_with(b'getvar:all')
-
-        # Verify response read
-        self.mock_ep_in.read.assert_called_with(64, timeout=100)
-
-        # Verify resources disposed
-        mock_usb_util.dispose_resources.assert_called_with(self.mock_dev)
-
-        # Verify script executed
-        self.mock_chmod.assert_called()
-        mock_subprocess.call.assert_called()
-        args, _ = mock_subprocess.call.call_args
-        self.assertIn("flash_rescue.sh", args[0][0])
-        self.assertEqual(args[0][1], "fastboot")
-
-        # Verify exit
-        self.mock_exit.assert_called_with(0)
-
-    def test_catch_fastboot_detach_error(self):
-        """Test resilience to kernel driver detach failure."""
-        self.mock_dev.is_kernel_driver_active.return_value = True
-        # Simulate USBError on detach
-        # We need to make sure the exception raised is an instance of the class we set on the mock
-        self.mock_dev.detach_kernel_driver.side_effect = mock_usb_core.USBError("Detach failed")
-
-        # Call function
-        pacman_interceptor.catch_fastboot(self.mock_dev)
-
-        # Verify detach was attempted
-        self.mock_dev.detach_kernel_driver.assert_called_with(0)
-
-        # Verify flow continued to claim interface
-        mock_usb_util.claim_interface.assert_called_with(self.mock_dev, 0)
-
-        # Verify exit called eventually
-        self.mock_exit.assert_called_with(0)
-
-    def test_catch_fastboot_read_timeout(self):
-        """Test resilience to read timeout."""
-        self.mock_dev.is_kernel_driver_active.return_value = False
-
-        # Simulate USBError on read
-        self.mock_ep_in.read.side_effect = mock_usb_core.USBError("Timeout")
-
-        # Call function
-        pacman_interceptor.catch_fastboot(self.mock_dev)
-
-        # Verify read attempted
-        self.mock_ep_in.read.assert_called()
-
-        # Verify flow continued to script execution
-        mock_subprocess.call.assert_called()
-        self.mock_exit.assert_called_with(0)
-
-    def test_catch_fastboot_general_exception(self):
-        """Test handling of unexpected exceptions."""
-        # Force an exception early in the process
-        self.mock_dev.is_kernel_driver_active.side_effect = Exception("Unexpected error")
-
-        # Call function
-        pacman_interceptor.catch_fastboot(self.mock_dev)
-
-        # Verify exit NOT called (function should return after logging error)
-        self.mock_exit.assert_not_called()
-        # Verify subprocess NOT called
-        mock_subprocess.call.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()
