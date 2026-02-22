@@ -1,38 +1,42 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
 import os
-
-# Mock usb package and submodules BEFORE importing pacman_interceptor
-mock_usb = MagicMock()
-mock_usb_core = MagicMock()
-mock_usb_util = MagicMock()
-
-sys.modules["usb"] = mock_usb
-sys.modules["usb.core"] = mock_usb_core
-sys.modules["usb.util"] = mock_usb_util
-
-# Mock stdout.isatty for Colors class initialization
-sys.stdout.isatty = MagicMock(return_value=True)
+import importlib
 
 # Ensure pacman_toolkit is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Now we can import the module under test
-import pacman_toolkit.pacman_interceptor as interceptor
-
 class TestCatchMtk(unittest.TestCase):
 
     def setUp(self):
+        # Create mocks for usb
+        mock_usb = MagicMock()
+        mock_usb_core = MagicMock()
+        mock_usb_util = MagicMock()
+        # Ensure USBError exists
+        mock_usb_core.USBError = Exception
+        mock_usb.core = mock_usb_core
+
+        # Patch sys.modules to inject our usb mocks, but KEEP real subprocess
+        # We use a context manager for the reload
+        with patch.dict(sys.modules, {
+            'usb': mock_usb,
+            'usb.core': mock_usb_core,
+            'usb.util': mock_usb_util
+        }):
+            import pacman_toolkit.pacman_interceptor
+            importlib.reload(pacman_toolkit.pacman_interceptor)
+            self.interceptor = pacman_toolkit.pacman_interceptor
+
         # Create a mock device object
         self.mock_dev = MagicMock()
         self.mock_dev.idVendor = 0x0e8d
         self.mock_dev.idProduct = 0x2000 # Example
 
         # Mock the global spinner to avoid actual output
-        interceptor.spinner = MagicMock()
-        interceptor.spinner.running = True
+        self.interceptor.spinner = MagicMock()
+        self.interceptor.spinner.running = True
 
     @patch('pacman_toolkit.pacman_interceptor.subprocess.call')
     @patch('pacman_toolkit.pacman_interceptor.os.chmod')
@@ -42,7 +46,7 @@ class TestCatchMtk(unittest.TestCase):
         """Test catch_mtk success path when local mtkclient exists."""
         # Setup: Local mtk exists
         # interceptor.MTK_PATH is defined at module level.
-        mtk_path = interceptor.MTK_PATH
+        mtk_path = self.interceptor.MTK_PATH
         local_mtk = os.path.join(mtk_path, "mtk")
 
         # Mock os.path.exists to return True specifically for the local mtk path check
@@ -60,7 +64,7 @@ class TestCatchMtk(unittest.TestCase):
         mock_call.return_value = 0 # Success for both calls (mtk payload and rescue script)
 
         # Run
-        interceptor.catch_mtk(self.mock_dev)
+        self.interceptor.catch_mtk(self.mock_dev)
 
         # Verify
         # First call: mtk payload using local python script
@@ -68,11 +72,11 @@ class TestCatchMtk(unittest.TestCase):
         mock_call.assert_any_call(expected_cmd)
 
         # Second call: rescue script
-        rescue_script = interceptor.RESCUE_SCRIPT
+        rescue_script = self.interceptor.RESCUE_SCRIPT
         mock_call.assert_any_call([rescue_script, "mtk"])
 
         # Verify spinner stopped
-        interceptor.spinner.stop.assert_called()
+        self.interceptor.spinner.stop.assert_called()
 
         # Verify chmod
         mock_chmod.assert_called_with(rescue_script, 0o755)
@@ -88,7 +92,7 @@ class TestCatchMtk(unittest.TestCase):
         """Test catch_mtk success path when local mtkclient is missing (fallback to system)."""
         # Setup: Local mtk DOES NOT exist
         # We need to make sure the check for local mtk returns False
-        mtk_path = interceptor.MTK_PATH
+        mtk_path = self.interceptor.MTK_PATH
         local_mtk = os.path.join(mtk_path, "mtk")
 
         def side_effect(path):
@@ -102,7 +106,7 @@ class TestCatchMtk(unittest.TestCase):
         mock_call.return_value = 0 # Success
 
         # Run
-        interceptor.catch_mtk(self.mock_dev)
+        self.interceptor.catch_mtk(self.mock_dev)
 
         # Verify
         # First call: mtk payload (system command)
@@ -123,7 +127,7 @@ class TestCatchMtk(unittest.TestCase):
         mock_exists.return_value = False # Default to system mtk, doesn't matter for failure check
 
         # Run
-        interceptor.catch_mtk(self.mock_dev)
+        self.interceptor.catch_mtk(self.mock_dev)
 
         # Verify
         mock_call.assert_called_once() # Only one call (payload)
@@ -144,7 +148,7 @@ class TestCatchMtk(unittest.TestCase):
         # Run
         # Should not crash, just log and return
         try:
-            interceptor.catch_mtk(self.mock_dev)
+            self.interceptor.catch_mtk(self.mock_dev)
         except Exception:
             self.fail("catch_mtk raised Exception unexpectedly!")
 
