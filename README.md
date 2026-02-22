@@ -51,7 +51,9 @@ sudo pacman -S base-devel git python python-pip libusb android-tools python-pyus
 ```
 
 ### Required Firmware Files
-You need the official Nothing OS firmware for your device region. Place these files in `pacman_toolkit/firmware/`:
+You need the official Nothing OS firmware for your device region. Place these files in `pacman_toolkit/firmware/`.
+
+**For detailed instructions on obtaining these files, see [FIRMWARE_GUIDE.md](FIRMWARE_GUIDE.md).**
 
 **For Fastboot Mode:**
 - `boot.img` - Kernel image
@@ -88,9 +90,7 @@ sudo usermod -aG uucp $USER
 ```
 
 ### 3. Download Firmware
-1. Download the appropriate Nothing OS firmware from [spike0en/nothing_archive](https://github.com/spike0en/nothing_archive)
-2. Extract the firmware images
-3. Place the required `.img` files in `pacman_toolkit/firmware/`
+Please refer to the **[Firmware Acquisition Guide](FIRMWARE_GUIDE.md)** for detailed step-by-step instructions on finding, downloading, extracting, and preparing the correct firmware files for your device.
 
 ### 4. Install mtkclient (For MTK Mode)
 If you need deep unbrick capability (MTK mode):
