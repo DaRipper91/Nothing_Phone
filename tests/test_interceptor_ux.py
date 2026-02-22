@@ -32,10 +32,6 @@ except ImportError as e:
     print(f"ImportError: {e}")
     sys.exit(1)
 
-# Mock check_prerequisites to avoid file checks during import/execution
-if hasattr(interceptor, 'check_prerequisites'):
-    interceptor.check_prerequisites = MagicMock()
-
 class TestInterceptorUX(unittest.TestCase):
     def test_colors_class_attributes(self):
         """Verify that Colors class has the expected ANSI codes."""
