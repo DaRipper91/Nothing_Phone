@@ -52,9 +52,14 @@ class TestInterceptorCatchErrors(unittest.TestCase):
         self.exit_patcher = patch('sys.exit')
         self.mock_exit = self.exit_patcher.start()
 
+        # Ensure interceptor uses OUR mock_usb_util
+        self.original_usb_util = interceptor.usb.util
+        interceptor.usb.util = mock_usb_util
+
     def tearDown(self):
         self.log_patcher.stop()
         self.exit_patcher.stop()
+        interceptor.usb.util = self.original_usb_util
 
     def test_catch_fastboot_claim_interface_error(self):
         """Test that catch_fastboot handles exceptions (e.g. claim_interface failure) correctly."""

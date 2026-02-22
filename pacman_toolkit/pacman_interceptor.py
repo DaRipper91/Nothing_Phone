@@ -24,8 +24,7 @@ VID_MEDIATEK = 0x0e8d
 TARGET_VIDS = {VID_GOOGLE, VID_NOTHING, VID_MEDIATEK}
 
 # Known Fastboot Product IDs
-KNOWN_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Common Fastboot PIDs
-NOTHING_FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Nothing Phone Fastboot PIDs
+FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Common Fastboot PIDs
 
 # Retry configuration
 MAX_RETRIES = 10
@@ -274,8 +273,7 @@ def main():
                         sys.exit(1)
                 
                 # Filter by VID and PID
-                is_fastboot = (dev.idVendor == VID_GOOGLE and dev.idProduct in KNOWN_FASTBOOT_PIDS) or \
-                              (dev.idVendor == VID_NOTHING and dev.idProduct in NOTHING_FASTBOOT_PIDS)
+                is_fastboot = (dev.idVendor in {VID_GOOGLE, VID_NOTHING} and dev.idProduct in FASTBOOT_PIDS)
 
                 if is_fastboot:
                     try:
