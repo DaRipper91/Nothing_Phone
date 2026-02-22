@@ -148,7 +148,10 @@ def catch_mtk(dev):
 
     # We construct the command to run mtkclient
     # Prefer local mtkclient if present
-    if os.path.exists(os.path.join(MTK_PATH, "mtk")):
+    # Check for mtk.py (source) or mtk (executable/link)
+    if os.path.exists(os.path.join(MTK_PATH, "mtk.py")):
+        cmd = ["python3", os.path.join(MTK_PATH, "mtk.py"), "payload"]
+    elif os.path.exists(os.path.join(MTK_PATH, "mtk")):
         cmd = ["python3", os.path.join(MTK_PATH, "mtk"), "payload"]
     else:
         # Fallback to assuming it's in PATH or installed as module
