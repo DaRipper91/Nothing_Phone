@@ -49,6 +49,8 @@ class TestCatchMtk(unittest.TestCase):
         def side_effect(path):
             if path == local_mtk:
                 return True
+            if path.endswith("mtk.py"):
+                return False
             # For other checks (like RESCUE_SCRIPT), we can return True or rely on the actual file system
             # But simpler to just mock it all as True for success path, or check if it matters.
             # The catch_mtk function calls os.path.exists for local mtk.
@@ -91,6 +93,8 @@ class TestCatchMtk(unittest.TestCase):
 
         def side_effect(path):
             if path == local_mtk:
+                return False
+            if path.endswith("mtk.py"):
                 return False
             return True # Allow other checks to pass if any
 
