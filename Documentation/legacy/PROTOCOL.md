@@ -91,7 +91,7 @@ chmod +x pacman_interceptor.py flash_rescue.sh
 sudo ./pacman_interceptor.py
 ```
 
-Output should indicate: `Waiting for Nothing Phone 2(a) (Pacman)...`
+Output should indicate: `🔎 Waiting for device connection... (Press Ctrl+C to stop)`
 
 #### Step 2: The "Catch"
 1. **Force Shutdown**: Hold **Vol+** and **Power** until the screen goes black.

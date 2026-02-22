@@ -27,6 +27,7 @@ The manual includes:
     ```bash
     sudo python3 pacman_toolkit/pacman_interceptor.py
     ```
+    You should see: `🔎 Waiting for device connection... (Press Ctrl+C to stop)`
 
 For detailed instructions, please consult the [Master Manual](Documentation/MASTER_MANUAL.md).
 
