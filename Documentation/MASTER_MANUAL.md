@@ -110,7 +110,7 @@ cd pacman_toolkit
 chmod +x pacman_interceptor.py flash_rescue.sh
 sudo ./pacman_interceptor.py
 ```
-Output should indicate: `Waiting for Nothing Phone 2(a) (Pacman)...`
+Output should indicate: `🔎 Waiting for device connection... (Press Ctrl+C to stop)`
 
 ### 4.3 Connect Your Device
 Follow this exact sequence:

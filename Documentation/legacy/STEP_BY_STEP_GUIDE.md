@@ -103,7 +103,7 @@ Start the tool. It will wait for your device connection.
 chmod +x pacman_interceptor.py flash_rescue.sh
 sudo ./pacman_interceptor.py
 ```
-You should see: `Waiting for Nothing Phone 2(a) (Pacman)...`
+You should see: `🔎 Waiting for device connection... (Press Ctrl+C to stop)`
 
 ### 2. Connect Your Device
 Follow this exact sequence to catch the bootloop window:
