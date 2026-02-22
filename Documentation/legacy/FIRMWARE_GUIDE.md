@@ -1,3 +1,5 @@
+> **⚠️ MOVED**: This document has been integrated into the [Master Manual](../MASTER_MANUAL.md). Please refer to **Chapter 3** of the Master Manual for the most up-to-date instructions.
+
 # Firmware Acquisition Guide for Nothing Phone 2(a)
 
 This guide provides step-by-step instructions on how to obtain the correct firmware files required for unbricking your Nothing Phone 2(a) (Pacman) using the `pacman_toolkit`.
