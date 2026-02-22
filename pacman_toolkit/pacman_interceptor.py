@@ -30,7 +30,7 @@ FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Common Fastboot PIDs
 MAX_RETRIES = 10
 INITIAL_BACKOFF = 2.0  # seconds
 MAX_BACKOFF = 30.0  # seconds
-POLLING_INTERVAL = 0.1  # seconds (10Hz) - reduced from 200Hz to save CPU
+POLLING_INTERVAL = 0.05  # seconds (20Hz) - balanced for responsiveness and CPU
 
 class Colors:
     _is_tty = sys.stdout.isatty()

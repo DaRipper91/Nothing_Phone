@@ -14,6 +14,13 @@ mock_usb_util = unittest.mock.MagicMock()
 # Setup find to return empty iterator
 mock_usb_core.find.return_value = iter([])
 
+# Setup USBError as a real exception type so it can be caught
+mock_usb_core.USBError = type('USBError', (Exception,), {})
+
+# Link modules
+mock_usb.core = mock_usb_core
+mock_usb.util = mock_usb_util
+
 module_patches = {
     'usb': mock_usb,
     'usb.core': mock_usb_core,
