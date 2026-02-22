@@ -1,6 +1,4 @@
-# Nothing Phone (2a) Repair Tool
-
-> **⚠️ Formerly known as Pacman Unbrick Toolkit**
+# Nothing Phone (2a) Unbrick Toolkit (Pacman)
 
 A comprehensive, automated repair tool for unbricking and recovering the Nothing Phone 2(a) (codename: Pacman) on Arch Linux systems.
 
