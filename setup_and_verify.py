@@ -101,6 +101,34 @@ def find_file(filename, search_paths):
             return candidate
     return None
 
+def setup_mtkclient():
+    print(f"\n{Colors.CYAN}[2.5/3] Checking mtkclient...{Colors.ENDC}")
+    mtk_dir = os.path.join(TOOLKIT_DIR, "mtkclient")
+
+    if os.path.exists(mtk_dir):
+        print(f"{Colors.GREEN}mtkclient already present.{Colors.ENDC}")
+    else:
+        print(f"{Colors.WARNING}mtkclient not found. Cloning from GitHub...{Colors.ENDC}")
+        try:
+            subprocess.check_call(["git", "clone", "https://github.com/bkerler/mtkclient.git", mtk_dir])
+            print(f"{Colors.GREEN}mtkclient cloned successfully.{Colors.ENDC}")
+        except subprocess.CalledProcessError:
+            print(f"{Colors.FAIL}Failed to clone mtkclient. Please check internet connection or clone manually.{Colors.ENDC}")
+            return False
+
+    # Install requirements
+    req_file = os.path.join(mtk_dir, "requirements.txt")
+    if os.path.exists(req_file):
+        print("Installing mtkclient requirements...")
+        try:
+            # We use the current python executable to install requirements
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file])
+            print(f"{Colors.GREEN}mtkclient requirements installed.{Colors.ENDC}")
+        except subprocess.CalledProcessError:
+            print(f"{Colors.WARNING}Failed to install mtkclient requirements. You may need to run 'pip install -r {req_file}' manually.{Colors.ENDC}")
+
+    return True
+
 def setup_firmware():
     print(f"\n{Colors.CYAN}[3/3] Setting up Firmware...{Colors.ENDC}")
 
@@ -180,6 +208,9 @@ if __name__ == "__main__":
     # Dependencies
     if not install_packages():
         print(f"{Colors.WARNING}Dependency installation skipped or failed.{Colors.ENDC}")
+
+    # mtkclient
+    setup_mtkclient()
 
     # Firmware
     setup_firmware()

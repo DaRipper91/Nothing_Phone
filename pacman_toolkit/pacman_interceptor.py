@@ -148,7 +148,10 @@ def catch_mtk(dev):
 
     # We construct the command to run mtkclient
     # Prefer local mtkclient if present
-    if os.path.exists(os.path.join(MTK_PATH, "mtk")):
+    # Check for mtk.py (source) or mtk (executable/link)
+    if os.path.exists(os.path.join(MTK_PATH, "mtk.py")):
+        cmd = ["python3", os.path.join(MTK_PATH, "mtk.py"), "payload"]
+    elif os.path.exists(os.path.join(MTK_PATH, "mtk")):
         cmd = ["python3", os.path.join(MTK_PATH, "mtk"), "payload"]
     else:
         # Fallback to assuming it's in PATH or installed as module
@@ -168,6 +171,22 @@ def catch_mtk(dev):
             log("mtkclient payload failed.", Colors.FAIL)
     except Exception as e:
         log(f"MTK Launch Error: {e}", Colors.FAIL)
+
+def handle_catch_error(e, dev_addr, failed_devices, retry_counts, device_type="device"):
+    """
+    Centralized error handling for catch attempts.
+    Updates failure tracking and logs the error.
+    """
+    # Track failure
+    current_count = failed_devices.get(dev_addr, (0, 0))[1]
+    new_count = current_count + 1
+    backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
+    failed_devices[dev_addr] = (
+        time.time() + backoff,
+        new_count
+    )
+    retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
+    log(f"Failed to catch {device_type} (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
 
 def print_instructions():
     print("\n" + Colors.HEADER + "="*60 + Colors.ENDC)
@@ -255,52 +274,19 @@ def main():
                         sys.exit(1)
                 
                 # Filter by VID and PID
-                if dev.idVendor == VID_GOOGLE:
-                    # Only catch if it's a known Fastboot PID
-                    if dev.idProduct in KNOWN_FASTBOOT_PIDS:
-                        try:
-                            catch_fastboot(dev)
-                        except Exception as e:
-                            # Track failure
-                            current_count = failed_devices.get(dev_addr, (0, 0))[1]
-                            new_count = current_count + 1
-                            backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
-                            failed_devices[dev_addr] = (
-                                time.time() + backoff,
-                                new_count
-                            )
-                            retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                            log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
-                elif dev.idVendor == VID_NOTHING:
-                    # Only catch if it's a known Nothing Fastboot PID
-                    if dev.idProduct in NOTHING_FASTBOOT_PIDS:
-                        try:
-                            catch_fastboot(dev)
-                        except Exception as e:
-                            # Track failure
-                            current_count = failed_devices.get(dev_addr, (0, 0))[1]
-                            new_count = current_count + 1
-                            backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
-                            failed_devices[dev_addr] = (
-                                time.time() + backoff,
-                                new_count
-                            )
-                            retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                            log(f"Failed to catch fastboot device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                is_fastboot = (dev.idVendor == VID_GOOGLE and dev.idProduct in KNOWN_FASTBOOT_PIDS) or \
+                              (dev.idVendor == VID_NOTHING and dev.idProduct in NOTHING_FASTBOOT_PIDS)
+
+                if is_fastboot:
+                    try:
+                        catch_fastboot(dev)
+                    except Exception as e:
+                        handle_catch_error(e, dev_addr, failed_devices, retry_counts, "fastboot device")
                 elif dev.idVendor == VID_MEDIATEK:
                     try:
                         catch_mtk(dev)
                     except Exception as e:
-                        # Track failure
-                        current_count = failed_devices.get(dev_addr, (0, 0))[1]
-                        new_count = current_count + 1
-                        backoff = min(INITIAL_BACKOFF * (2 ** new_count), MAX_BACKOFF)
-                        failed_devices[dev_addr] = (
-                            time.time() + backoff,
-                            new_count
-                        )
-                        retry_counts[dev_addr] = retry_counts.get(dev_addr, 0) + 1
-                        log(f"Failed to catch MTK device (attempt {retry_counts[dev_addr]}): {e}", Colors.WARNING)
+                        handle_catch_error(e, dev_addr, failed_devices, retry_counts, "MTK device")
 
             # Minimal sleep to prevent CPU hogging, but keep it tight
             time.sleep(POLLING_INTERVAL)
