@@ -3,6 +3,7 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
+# Mock usb and its submodules BEFORE importing pacman_interceptor
 # Mock usb package and submodules BEFORE importing pacman_interceptor
 # Create mocks
 mock_usb = MagicMock()
@@ -13,6 +14,8 @@ sys.modules["usb"] = mock_usb
 sys.modules["usb.core"] = mock_usb_core
 sys.modules["usb.util"] = mock_usb_util
 
+# IMPORTANT: Link the submodules to the parent package mock
+# This ensures that 'import usb.core' makes 'usb.core' refer to our configured mock
 # Ensure accessing usb.util via the usb module returns the same mock
 mock_usb.core = mock_usb_core
 mock_usb.util = mock_usb_util
@@ -20,6 +23,20 @@ mock_usb.util = mock_usb_util
 # Set USBError to Exception globally and immediately
 mock_usb_core.USBError = Exception
 
+# Mock subprocess to prevent side effects
+mock_subprocess = MagicMock()
+sys.modules["subprocess"] = mock_subprocess
+
+# Mock sys.stdout.isatty to ensure Colors are initialized correctly
+# This mimics what test_interceptor_ux.py does to avoid conflicts if this test runs first
+sys.stdout.isatty = MagicMock(return_value=True)
+
+# Ensure the toolkit directory is in sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Now import the module under test
+try:
+    from pacman_toolkit import pacman_interceptor as interceptor
 # Mock stdout.isatty for Colors class initialization
 sys.stdout.isatty = MagicMock(return_value=True)
 
@@ -216,6 +233,47 @@ class TestCatchFastboot(TestInterceptor):
         # Simulate USBError on read
         mock_ep_in.read.side_effect = interceptor.usb.core.USBError("Timeout")
 
+    @patch('pacman_toolkit.pacman_interceptor.subprocess.call')
+    @patch('pacman_toolkit.pacman_interceptor.sys.exit')
+    @patch('pacman_toolkit.pacman_interceptor.usb.util.claim_interface')
+    @patch('pacman_toolkit.pacman_interceptor.usb.util.find_descriptor')
+    @patch('pacman_toolkit.pacman_interceptor.log')
+    def test_catch_fastboot_missing_endpoints(self, mock_log, mock_find, mock_claim, mock_exit, mock_call):
+        """
+        Test that if endpoints are missing, the code logs an error and does NOT call the rescue script.
+        """
+        # Setup: find_descriptor returns None (missing endpoints)
+        mock_find.return_value = None
+
+        # Execute
+        interceptor.catch_fastboot(self.mock_dev)
+
+        # Verify descriptors were sought but not found (returned None)
+        # find_descriptor is called twice
+        self.assertEqual(mock_find.call_count, 2)
+
+        # Verify script executed (SHOULD BE ZERO)
+        mock_call.assert_not_called()
+
+        # Verify exit called (SHOULD BE ZERO)
+        mock_exit.assert_not_called()
+
+        # Verify error logged
+        # Expected: log(f"Fastboot Catch Error: {e}", Colors.FAIL)
+        # The exception raised is Exception("Required endpoints (IN/OUT) not found")
+        error_found = False
+        for call in mock_log.call_args_list:
+            args, _ = call
+            if args and "Fastboot Catch Error" in str(args[0]) and "Required endpoints" in str(args[0]):
+                error_found = True
+                break
+
+        self.assertTrue(error_found, "Expected error message not found in logs")
+
+class TestCatchMtk(unittest.TestCase):
+    def setUp(self):
+        self.mock_dev = MagicMock()
+        interceptor.spinner = MagicMock()
         # Execute
         interceptor.catch_fastboot(self.mock_dev)
 

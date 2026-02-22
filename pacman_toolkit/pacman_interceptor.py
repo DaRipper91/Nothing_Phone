@@ -129,17 +129,19 @@ def catch_fastboot(dev):
                 logger.debug(f"USB read timeout or error (expected): {e}")
                 pass
 
-        # Release resources so flash_rescue.sh (fastboot tool) can take over
-        usb.util.dispose_resources(dev)
+            # Release resources so flash_rescue.sh (fastboot tool) can take over
+            usb.util.dispose_resources(dev)
 
-        log("Device frozen. Invoking Flash Rescue (Fastboot Mode)...", Colors.GREEN)
-        if spinner:
-            spinner.stop()
+            log("Device frozen. Invoking Flash Rescue (Fastboot Mode)...", Colors.GREEN)
+            if spinner:
+                spinner.stop()
 
-        # Ensure executable
-        os.chmod(RESCUE_SCRIPT, 0o755)
-        subprocess.call([RESCUE_SCRIPT, "fastboot"])
-        sys.exit(0)
+            # Ensure executable
+            os.chmod(RESCUE_SCRIPT, 0o755)
+            subprocess.call([RESCUE_SCRIPT, "fastboot"])
+            sys.exit(0)
+        else:
+            raise Exception("Required endpoints (IN/OUT) not found")
 
     except Exception as e:
         log(f"Fastboot Catch Error: {e}", Colors.FAIL)
