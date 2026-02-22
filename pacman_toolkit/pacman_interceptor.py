@@ -170,20 +170,14 @@ def catch_mtk(dev):
         log(f"MTK Launch Error: {e}", Colors.FAIL)
 
 def print_instructions():
-    print("\n" + Colors.BOLD + "="*50 + Colors.ENDC)
-    print(f"      {Colors.HEADER}Nothing Phone 2(a) Recovery Toolkit{Colors.ENDC}")
-    print(Colors.BOLD + "="*50 + Colors.ENDC)
-    print(f"1. Force shutdown: Hold {Colors.CYAN}Vol+{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC} until screen is black")
-    print(f"2. Enter recovery: Immediately hold {Colors.CYAN}Vol+{Colors.ENDC}, {Colors.CYAN}Vol-{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC}")
-    print(f"3. {Colors.GREEN}Connect USB cable{Colors.ENDC} while holding all three buttons")
-    print(Colors.BOLD + "="*50 + Colors.ENDC + "\n")
-    print("\n" + Colors.HEADER + "="*50)
-    print("      Nothing Phone 2(a) Recovery Toolkit")
-    print("="*50 + Colors.ENDC)
-    print(f"1. Force shutdown: Hold {Colors.CYAN}Vol+{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC} until screen is black")
-    print(f"2. Enter recovery: Immediately hold {Colors.CYAN}Vol+{Colors.ENDC}, {Colors.CYAN}Vol-{Colors.ENDC} and {Colors.CYAN}Power{Colors.ENDC}")
-    print("3. Connect USB cable while holding all three buttons")
-    print(Colors.HEADER + "="*50 + Colors.ENDC + "\n")
+    print("\n" + Colors.HEADER + "="*60 + Colors.ENDC)
+    print(f"{Colors.BOLD}      Nothing Phone 2(a) Recovery Toolkit (Pacman){Colors.ENDC}")
+    print(Colors.HEADER + "="*60 + Colors.ENDC)
+    print(f"\n{Colors.UNDERLINE}Instructions:{Colors.ENDC}")
+    print(f"1. {Colors.BOLD}Force Shutdown:{Colors.ENDC} Hold {Colors.CYAN}Vol+{Colors.ENDC} + {Colors.CYAN}Power{Colors.ENDC} until screen is black")
+    print(f"2. {Colors.BOLD}Enter Recovery:{Colors.ENDC} Immediately hold {Colors.CYAN}Vol+{Colors.ENDC} + {Colors.CYAN}Vol-{Colors.ENDC} + {Colors.CYAN}Power{Colors.ENDC}")
+    print(f"3. {Colors.BOLD}Connect:{Colors.ENDC}        Plug in USB cable while holding all three buttons")
+    print("\n" + Colors.HEADER + "="*60 + Colors.ENDC + "\n")
 
 def check_prerequisites():
     if not os.path.exists(RESCUE_SCRIPT):
@@ -213,7 +207,6 @@ def main():
     log("  Target VIDs: 0x18d1 (Google), 0x2b4c (Nothing), 0x0e8d (MediaTek)")
     
     spinner = Spinner(f"{Colors.CYAN}🔎 Waiting for device connection... (Press Ctrl+C to stop){Colors.ENDC}")
-    spinner = Spinner(f"{Colors.BLUE}🔎 Waiting for device connection... (Press Ctrl+C to stop){Colors.ENDC}")
     spinner.start()
 
     # Track failed catch attempts to implement cooldown
