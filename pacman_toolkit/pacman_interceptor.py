@@ -26,6 +26,9 @@ TARGET_VIDS = {VID_GOOGLE, VID_NOTHING, VID_MEDIATEK}
 # Known Fastboot Product IDs
 FASTBOOT_PIDS = {0x4ee0, 0xd001}  # Common Fastboot PIDs
 
+# Known MediaTek Product IDs (BROM, Preloader)
+MTK_PIDS = {0x0003, 0x2000}
+
 # Retry configuration
 MAX_RETRIES = 10
 INITIAL_BACKOFF = 2.0  # seconds
@@ -282,7 +285,7 @@ def main():
                         catch_fastboot(dev)
                     except Exception as e:
                         handle_catch_error(e, dev_addr, failed_devices, retry_counts, "fastboot device")
-                elif dev.idVendor == VID_MEDIATEK:
+                elif dev.idVendor == VID_MEDIATEK and dev.idProduct in MTK_PIDS:
                     try:
                         catch_mtk(dev)
                     except Exception as e:
