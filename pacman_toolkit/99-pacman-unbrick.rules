@@ -1,13 +1,13 @@
 # MediaTek BootROM (BROM) - The Target
 # VID 0e8d, PID 0003
-SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", ATTR{idProduct}=="0003", MODE="0666", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_brom"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", ATTR{idProduct}=="0003", MODE="0660", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_brom"
 
 # MediaTek Preloader - The Loop Stage
 # VID 0e8d, PID 2000
-SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", ATTR{idProduct}=="2000", MODE="0666", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_preloader"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", ATTR{idProduct}=="2000", MODE="0660", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_preloader"
 
 # Google / Common Fastboot (18d1:4ee0 usually)
-SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0666", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_fastboot_google"
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0660", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_fastboot_google"
 
 # Nothing Phone 2(a) Specific
-SUBSYSTEM=="usb", ATTR{idVendor}=="2b4c", MODE="0666", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_fastboot_nothing"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2b4c", MODE="0660", GROUP="uucp", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="pacman_fastboot_nothing"
