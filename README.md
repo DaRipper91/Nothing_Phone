@@ -1,5 +1,7 @@
 # Nothing Phone 2(a) Pacman Unbrick Toolkit
 
+> **🚀 QUICK START GUIDE**: For a confusion-free, step-by-step walkthrough of the entire process (from setup to unbricking), please see **[STEP_BY_STEP_GUIDE.md](STEP_BY_STEP_GUIDE.md)**.
+
 A comprehensive toolkit for unbricking and recovering the Nothing Phone 2(a) (codename: Pacman) on Arch Linux systems. This toolkit provides automated USB interception scripts that catch the device during its bootloop window and execute emergency flashing procedures.
 
 ## 🎯 Overview
@@ -105,6 +107,8 @@ pip install .
 ## 📖 Usage
 
 ### Quick Start
+
+> **Recommended**: Follow the [Step-by-Step Guide](STEP_BY_STEP_GUIDE.md) for detailed instructions.
 
 1. **Prepare the toolkit:**
 ```bash
