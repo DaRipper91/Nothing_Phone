@@ -1,3 +1,5 @@
+> **⚠️ MOVED**: This document has been integrated into the [Master Manual](../MASTER_MANUAL.md). Please refer to **Chapter 4** of the Master Manual for the most up-to-date instructions.
+
 # Step-by-Step Guide: Unbricking Nothing Phone 2(a)
 
 This guide provides a single, linear set of instructions to unbrick your Nothing Phone 2(a) (Pacman) using this toolkit. Follow these steps exactly to avoid confusion.
@@ -123,7 +125,7 @@ The script will automatically flash the necessary partitions.
 
 1.  Disconnect the USB cable.
 2.  Hold **Vol+** and **Power** to boot into Fastboot Mode.
-3.  If you see the Fastboot screen, congratulations! Your device is unbricked.
+3.  If the device enters Fastboot, you have successfully unbricked.
 4.  You can now flash the full stock firmware using standard Fastboot commands if needed.
 
 ## 🆘 Troubleshooting

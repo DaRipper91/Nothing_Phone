@@ -1,3 +1,5 @@
+> **⚠️ MOVED**: This document has been integrated into the [Master Manual](../MASTER_MANUAL.md). Please refer to **Chapter 2** of the Master Manual for the most up-to-date instructions.
+
 # Pacman Unbrick Protocol: Nothing Phone 2(a) [A142]
 ## Definitive Zero-Latency Recovery Toolkit
 
