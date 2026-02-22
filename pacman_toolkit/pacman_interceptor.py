@@ -153,13 +153,24 @@ def catch_mtk(dev):
     # We construct the command to run mtkclient
     # Prefer local mtkclient if present
     # Check for mtk.py (source) or mtk (executable/link)
+    python_cmd = "python3"
+    venv_python = os.path.join(MTK_PATH, "venv", "bin", "python3")
+    if os.path.exists(venv_python):
+        python_cmd = venv_python
+
+    preloader_path = os.path.join(TOOLKIT_DIR, "firmware", "preloader.img")
+    if not os.path.exists(preloader_path):
+        log(f"Preloader image not found at {preloader_path}", Colors.FAIL)
+        # We can't proceed without a preloader for the exploit
+        return
+
     if os.path.exists(os.path.join(MTK_PATH, "mtk.py")):
-        cmd = ["python3", os.path.join(MTK_PATH, "mtk.py"), "payload"]
+        cmd = [python_cmd, os.path.join(MTK_PATH, "mtk.py"), "payload", "--preloader", preloader_path]
     elif os.path.exists(os.path.join(MTK_PATH, "mtk")):
-        cmd = ["python3", os.path.join(MTK_PATH, "mtk"), "payload"]
+        cmd = [python_cmd, os.path.join(MTK_PATH, "mtk"), "payload", "--preloader", preloader_path]
     else:
         # Fallback to assuming it's in PATH or installed as module
-        cmd = ["mtk", "payload"]
+        cmd = ["mtk", "payload", "--preloader", preloader_path]
 
     try:
         # We use call to wait for it. mtk payload should handle the handshake.
