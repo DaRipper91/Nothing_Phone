@@ -75,6 +75,19 @@ git clone https://github.com/DaRipper91/Nothing-Phone-2-a-.git
 cd Nothing-Phone-2-a-
 ```
 
+### 🖥️ Manager Toolkit (GUI/TUI)
+
+A new interactive menu-based tool is available to manage common tasks:
+- **Rescue / Unbrick**: Launches the automated interceptor.
+- **Unlock Bootloader**: Easily unlock the bootloader (Wipes Data).
+- **Root Device**: Flash a rooted boot image (e.g., `magisk_patched.img`).
+- **Smart Firmware Search**: Automatically finds firmware files in common locations or searches hidden folders if needed.
+
+**Usage:**
+```bash
+python3 pacman_toolkit/pacman_manager.py
+```
+
 ### 2. Install Udev Rules
 The udev rules provide immediate USB permissions and bypass ModemManager:
 ```bash
