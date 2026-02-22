@@ -71,12 +71,12 @@ validate_firmware_files() {
 
 # Function to execute command with error handling
 exec_with_check() {
-    local cmd="$1"
-    local description="$2"
+    local description="$1"
+    shift
     
     echo "[PACMAN-RESCUE] $description..."
     
-    if eval "$cmd"; then
+    if "$@"; then
         OPERATIONS_SUCCESS+=("$description")
         echo "  ✓ Success"
         return 0
@@ -137,10 +137,10 @@ if [ "$MODE" == "fastboot" ]; then
         exit 1
     fi
 
-    exec_with_check "fastboot flash boot_a '$FIRMWARE_DIR/boot.img'" "Flash boot_a partition"
-    exec_with_check "fastboot flash boot_b '$FIRMWARE_DIR/boot.img'" "Flash boot_b partition"
-    exec_with_check "fastboot flash --disable-verity --disable-verification vbmeta_a '$FIRMWARE_DIR/vbmeta.img'" "Flash vbmeta_a partition (disable verity)"
-    exec_with_check "fastboot flash --disable-verity --disable-verification vbmeta_b '$FIRMWARE_DIR/vbmeta.img'" "Flash vbmeta_b partition (disable verity)"
+    exec_with_check "Flash boot_a partition" fastboot flash boot_a "$FIRMWARE_DIR/boot.img"
+    exec_with_check "Flash boot_b partition" fastboot flash boot_b "$FIRMWARE_DIR/boot.img"
+    exec_with_check "Flash vbmeta_a partition (disable verity)" fastboot flash --disable-verity --disable-verification vbmeta_a "$FIRMWARE_DIR/vbmeta.img"
+    exec_with_check "Flash vbmeta_b partition (disable verity)" fastboot flash --disable-verity --disable-verification vbmeta_b "$FIRMWARE_DIR/vbmeta.img"
 
     print_summary
     
@@ -152,10 +152,10 @@ if [ "$MODE" == "fastboot" ]; then
 elif [ "$MODE" == "mtk" ]; then
     # Determine mtk command
     if [ -f "$MTK_CLIENT" ] || [ -f "${MTK_CLIENT}.py" ]; then
-        MTK_CMD="python3 $MTK_CLIENT"
+        MTK_CMD=(python3 "$MTK_CLIENT")
     else
         if command -v mtk &> /dev/null; then
-             MTK_CMD="mtk"
+             MTK_CMD=(mtk)
         else
              echo "Error: mtkclient not found. Please install it or place in toolkit dir."
              exit 1
@@ -165,20 +165,20 @@ elif [ "$MODE" == "mtk" ]; then
     echo "[PACMAN-RESCUE] Flashing via mtkclient..."
 
     # Preloader (Critical)
-    exec_with_check "$MTK_CMD w preloader '$FIRMWARE_DIR/preloader.img'" "Flash preloader partition"
-    exec_with_check "$MTK_CMD w preloader_b '$FIRMWARE_DIR/preloader.img'" "Flash preloader_b partition"
+    exec_with_check "Flash preloader partition" "${MTK_CMD[@]}" w preloader "$FIRMWARE_DIR/preloader.img"
+    exec_with_check "Flash preloader_b partition" "${MTK_CMD[@]}" w preloader_b "$FIRMWARE_DIR/preloader.img"
 
     # LK / Bootloader
-    exec_with_check "$MTK_CMD w lk '$FIRMWARE_DIR/lk.img'" "Flash lk partition"
-    exec_with_check "$MTK_CMD w lk2 '$FIRMWARE_DIR/lk.img'" "Flash lk2 partition"
+    exec_with_check "Flash lk partition" "${MTK_CMD[@]}" w lk "$FIRMWARE_DIR/lk.img"
+    exec_with_check "Flash lk2 partition" "${MTK_CMD[@]}" w lk2 "$FIRMWARE_DIR/lk.img"
 
     # Boot
-    exec_with_check "$MTK_CMD w boot_a '$FIRMWARE_DIR/boot.img'" "Flash boot_a partition"
-    exec_with_check "$MTK_CMD w boot_b '$FIRMWARE_DIR/boot.img'" "Flash boot_b partition"
+    exec_with_check "Flash boot_a partition" "${MTK_CMD[@]}" w boot_a "$FIRMWARE_DIR/boot.img"
+    exec_with_check "Flash boot_b partition" "${MTK_CMD[@]}" w boot_b "$FIRMWARE_DIR/boot.img"
 
     # VBMeta
-    exec_with_check "$MTK_CMD w vbmeta_a '$FIRMWARE_DIR/vbmeta.img' --verified-boot-disable" "Flash vbmeta_a partition (disable verified boot)"
-    exec_with_check "$MTK_CMD w vbmeta_b '$FIRMWARE_DIR/vbmeta.img' --verified-boot-disable" "Flash vbmeta_b partition (disable verified boot)"
+    exec_with_check "Flash vbmeta_a partition (disable verified boot)" "${MTK_CMD[@]}" w vbmeta_a "$FIRMWARE_DIR/vbmeta.img" --verified-boot-disable
+    exec_with_check "Flash vbmeta_b partition (disable verified boot)" "${MTK_CMD[@]}" w vbmeta_b "$FIRMWARE_DIR/vbmeta.img" --verified-boot-disable
 
     print_summary
     
